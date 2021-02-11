@@ -1,0 +1,3364 @@
+{
+	"info": {
+		"_postman_id": "db6faba3-09b8-49df-98dd-fc93829cd296",
+		"name": "Data Management",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Access Hubs/Projects/Folders/Items/Versions workflow",
+			"item": [
+				{
+					"name": "Step 0: Reset the environment variables",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.environment.clear();",
+									"",
+									"// Please change the following variables according to your account setting",
+									"// your Forge App key",
+									"pm.environment.set(\"client_id\",     \"your client id\");",
+									"pm.environment.set(\"client_secret\", \"your client secret\");",
+									"",
+									"",
+									"// Change to the specified project name",
+									"pm.environment.set(\"project_name\", \"your project name\");",
+									"",
+									"",
+									"pm.environment.set(\"base_domain\", \"https://developer.api.autodesk.com/\");",
+									"pm.environment.set(\"bim360_bucket\", \"wip.dm.prod\");",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/health",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Reset the following environment variables:\n1. Forge Client Key, please change to your Forge Client Id and Secret.\n2. Project name, please change to the correct project name which you want to work with.\n3. Base domain, should be https://developer.api.autodesk.com/ by default.\n4. Segment index, will be used to create multiple budget segments, should be 1 by default."
+					},
+					"response": []
+				},
+				{
+					"name": "--------------------- Access Hub|Project---------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET all hubs of your account",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// setup the environment variable \"hub_id\" and \"account_id\" with the 1st BIM360 hub",
+									"var responseBody = JSON.parse(responseBody);",
+									"var bim_hub = responseBody.data.find( hub =>  hub.id.indexOf(\"b.\") !== -1);",
+									"if(bim_hub !== null ){",
+									"    ",
+									"    pm.environment.set(\"hub_id\",     bim_hub.id);",
+									"    pm.environment.set(\"account_id\", bim_hub.id.split('b.').join(''));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_domain}}/project/v1/hubs",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"project",
+								"v1",
+								"hubs"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET projects from a hub",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// find the specified project and setup the environment variable \"project_id\"",
+									"var project_name =  pm.environment.get(\"project_name\");",
+									"var responseBody = JSON.parse(responseBody);",
+									"var project = responseBody.data.find(d => d.attributes.name == project_name)",
+									"if( project ){",
+									"    postman.setEnvironmentVariable(\"project_id\", project.id);",
+									"    postman.setEnvironmentVariable(\"project_id_without_b\", project.id.split('b.').join(''));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_domain}}/project/v1/hubs/{{hub_id}}/projects?page[limit]=200",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"project",
+								"v1",
+								"hubs",
+								"{{hub_id}}",
+								"projects"
+							],
+							"query": [
+								{
+									"key": "page[limit]",
+									"value": "200"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Project TopFolders",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.environment.set(\"folder_id\", jsonData.data[1].id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/project/v1/hubs/:hub/projects/:project/topFolders",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"project",
+								"v1",
+								"hubs",
+								":hub",
+								"projects",
+								":project",
+								"topFolders"
+							],
+							"variable": [
+								{
+									"key": "hub",
+									"value": "{{hub_id}}"
+								},
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "--------------------- Fusion related (No Idea how to work)---------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Project Download ???",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/downloads/:download",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"downloads",
+								":download"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "download",
+									"value": "{{download_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Project Download ???",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/vnd.api+json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n        \"jsonapi\": {\n          \"version\": \"1.0\"\n        },\n        \"data\": {\n          \"type\": \"downloads\",\n          \"attributes\": {\n            \"format\": {\n              \"fileType\": \"dwf\"\n            }\n          },\n          \"relationships\": {\n            \"source\": {\n              \"data\": {\n                \"type\": \"versions\",\n                \"id\": \"{{version_id}}\"\n              }\n            }\n          }\n        }\n      }"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/downloads",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"downloads"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Project Job ???",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/jobs/:job",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"jobs",
+								":job"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "job",
+									"value": "{{job_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "--------------------Access Folder----------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Folder",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Folder Parent",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Folder Search",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder/search?filter[attributes.displayName]=\"Project1.rvt\"",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder",
+								"search"
+							],
+							"query": [
+								{
+									"key": "filter[attributes.displayName]",
+									"value": "\"Project1.rvt\""
+								}
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Folder Refs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder/refs",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder",
+								"refs"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Folder Relationships Links",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder/relationships/links",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder",
+								"relationships",
+								"links"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Folder Relationships Refs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder/relationships/refs",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder",
+								"relationships",
+								"refs"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Folder Contents",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var responseBody = JSON.parse(responseBody);",
+									"var item = responseBody.data.find( content =>  content.type == \"items\");",
+									"if(item !== null ){",
+									"    pm.environment.set(\"item_id\",     item.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder/contents",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder",
+								"contents"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "--------------------Access Item----------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Item",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Item Parent",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Item Refs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/refs",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"refs"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Item Relationships Refs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/relationships/refs",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"relationships",
+								"refs"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Item Relationships Links",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/relationships/links",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"relationships",
+								"links"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Item Tip",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/tip",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"tip"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Item Versions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var responseBody = JSON.parse(responseBody);",
+									"pm.environment.set(\"version_id\", encodeURIComponent(responseBody.data[0].id));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/versions",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"versions"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "--------------------Access Version----------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Version",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions/:version",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions",
+								":version"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "version",
+									"value": "{{version_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Version DownloadFormats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions/:version/downloadFormats",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions",
+								":version",
+								"downloadFormats"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "version",
+									"value": "{{version_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Version Downloads",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions/:version/downloads",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions",
+								":version",
+								"downloads"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "version",
+									"value": "{{version_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Version Item",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions/:version/item",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions",
+								":version",
+								"item"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "version",
+									"value": "{{version_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Version Refs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions/:version/refs",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions",
+								":version",
+								"refs"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "version",
+									"value": "{{version_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Version Relationships links",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions/:version/relationships/links",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions",
+								":version",
+								"relationships",
+								"links"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "version",
+									"value": "{{version_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Version Relationships Refs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions/:version/relationships/refs",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions",
+								":version",
+								"relationships",
+								"refs"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "version",
+									"value": "{{version_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Create Folders/Items/Versions workflow",
+			"item": [
+				{
+					"name": "Step 0: Reset the environment variables",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.environment.clear();",
+									"",
+									"// Please change the following variables according to your account setting",
+									"// your Forge App key",
+									"pm.environment.set(\"client_id\",     \"your client id\");",
+									"pm.environment.set(\"client_secret\", \"your client secret\");",
+									"",
+									"",
+									"// Change to the specified project name",
+									"pm.environment.set(\"project_name\", \"your project name\");",
+									"",
+									"",
+									"pm.environment.set(\"base_domain\", \"https://developer.api.autodesk.com/\");",
+									"pm.environment.set(\"bim360_bucket\", \"wip.dm.prod\");",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/health",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Reset the following environment variables:\n1. Forge Client Key, please change to your Forge Client Id and Secret.\n2. Project name, please change to the correct project name which you want to work with.\n3. Base domain, should be https://developer.api.autodesk.com/ by default.\n4. Segment index, will be used to create multiple budget segments, should be 1 by default."
+					},
+					"response": []
+				},
+				{
+					"name": "--------------------Find folder----------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET all hubs of your account",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// setup the environment variable \"hub_id\" and \"account_id\" with the 1st BIM360 hub",
+									"var responseBody = JSON.parse(responseBody);",
+									"var bim_hub = responseBody.data.find( hub =>  hub.id.indexOf(\"b.\") !== -1);",
+									"if(bim_hub !== null ){",
+									"    ",
+									"    pm.environment.set(\"hub_id\",     bim_hub.id);",
+									"    pm.environment.set(\"account_id\", bim_hub.id.split('b.').join(''));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_domain}}/project/v1/hubs",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"project",
+								"v1",
+								"hubs"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET projects from a hub",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// find the specified project and setup the environment variable \"project_id\"",
+									"var project_name =  pm.environment.get(\"project_name\");",
+									"var responseBody = JSON.parse(responseBody);",
+									"var project = responseBody.data.find(d => d.attributes.name == project_name)",
+									"if( project ){",
+									"    postman.setEnvironmentVariable(\"project_id\", project.id);",
+									"    postman.setEnvironmentVariable(\"project_id_without_b\", project.id.split('b.').join(''));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_domain}}/project/v1/hubs/{{hub_id}}/projects?page[limit]=200",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"project",
+								"v1",
+								"hubs",
+								"{{hub_id}}",
+								"projects"
+							],
+							"query": [
+								{
+									"key": "page[limit]",
+									"value": "200"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Project TopFolders",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.environment.set(\"folder_id\", jsonData.data[1].id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/project/v1/hubs/:hub/projects/:project/topFolders",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"project",
+								"v1",
+								"hubs",
+								":hub",
+								"projects",
+								":project",
+								"topFolders"
+							],
+							"variable": [
+								{
+									"key": "hub",
+									"value": "{{hub_id}}"
+								},
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Folder",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Folder Contents",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// var new_folder_name = pm.environment.get(\"new_folder_name\");",
+									"// var responseBody = JSON.parse(responseBody);",
+									"// console.log(responseBody)",
+									"// var folder = responseBody.data.find( content =>  {",
+									"//     content === 'folders' && content.attributes.displayName === new_folder_name",
+									"//     });",
+									"",
+									"// console.log(folder);",
+									"",
+									"// if(folder != null ){",
+									"//     pm.environment.set(\"folder_id\",     folder.id);",
+									"// }"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder/contents",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder",
+								"contents"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "--------------------Create|Update new folder----------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Folder",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.environment.set(\"new_folder_name\", \"New Folder 4 Created by API\");",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"var responseBody = JSON.parse(responseBody);",
+									"pm.environment.set(\"folder_id\",     responseBody.data.id);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonapi\": {\n    \"version\": \"1.0\"\n  },\n  \"data\": {\n    \"type\": \"folders\",\n    \"attributes\": {\n      \"name\": \"{{new_folder_name}}\",\n      \"extension\": {\n        \"type\": \"folders:autodesk.bim360:Folder\",\n        \"version\": \"1.0\"\n      }\n    },\n    \"relationships\": {\n      \"parent\": {\n        \"data\": {\n          \"type\": \"folders\",\n          \"id\": \"{{folder_id}}\"\n        }\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH Update Folder",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonapi\": {\n    \"version\": \"1.0\"\n  }, \n  \"data\": {\n    \"type\": \"folders\",\n    \"id\": \"{{folder_id}}\",\n    \"attributes\": {\n      \"name\": \"this is a hidden folder\",\n      \"hidden\":false\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Folder Relationship References ???",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.environment.set(\"new_folder_name\", \"New Folder 3 Created by API\");",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"// var responseBody = JSON.parse(responseBody);",
+									"// pm.environment.set(\"folder_id\",     responseBody.data.id);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n        \"jsonapi\": {\n          \"version\": \"1.0\"\n        },\n        \"data\": {\n          \"type\": \"versions\",\n          \"id\": \"{{version_id}}\",\n          \"meta\": {\n            \"extension\": {\n              \"type\": \"auxiliary:autodesk.core:Attachment\",\n              \"version\": \"1.0\"\n            }\n          }\n        }\n      }"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "---------------------Create Item and 1st version---------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create storage",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"var object_id = jsonData.data.id;",
+									"var params = object_id.split('/');",
+									"",
+									"pm.environment.set(\"object_id\", params[params.length - 1]);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n      \"jsonapi\": { \"version\": \"1.0\" },\n      \"data\": {\n        \"type\": \"objects\",\n        \"attributes\": {\n          \"name\": \"test2.jpg\"\n        },\n        \"relationships\": {\n          \"target\": {\n            \"data\": { \"type\": \"folders\", \"id\": \"{{folder_id}}\" }\n          }\n        }\n      }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/storage",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"storage"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Upload file",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"var object_id_with_bucket = jsonData.objectId;",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/octet-stream"
+							}
+						],
+						"body": {
+							"mode": "file",
+							"file": {
+								"src": "/Users/zhongwu/Desktop/麓湖国际平面图.jpg"
+							}
+						},
+						"url": {
+							"raw": "{{base_domain}}/oss/v2/buckets/:bucket/objects/:object",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"oss",
+								"v2",
+								"buckets",
+								":bucket",
+								"objects",
+								":object"
+							],
+							"variable": [
+								{
+									"key": "bucket",
+									"value": "{{bim360_bucket}}"
+								},
+								{
+									"key": "object",
+									"value": "{{object_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create 1st version for item",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/vnd.api+json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"jsonapi\": { \"version\": \"1.0\" },\n    \"data\": {\n      \"type\": \"items\",\n      \"attributes\": {\n        \"displayName\": \"basic.jpg\",\n        \"extension\": {\n          \"type\": \"items:autodesk.bim360:File\",\n          \"version\": \"1.0\"\n        }\n      },\n      \"relationships\": {\n        \"tip\": {\n          \"data\": {\n            \"type\": \"versions\", \"id\": \"1\"\n          }\n        },\n        \"parent\": {\n          \"data\": {\n            \"type\": \"folders\",\n            \"id\": \"{{folder_id}}\"\n          }\n        }\n      }\n    },\n    \"included\": [\n      {\n        \"type\": \"versions\",\n        \"id\": \"1\",\n        \"attributes\": {\n          \"name\": \"basic.jpg\",\n          \"extension\": {\n            \"type\": \"versions:autodesk.bim360:File\",\n            \"version\": \"1.0\"\n          }\n        },\n        \"relationships\": {\n          \"storage\": {\n            \"data\": {\n              \"type\": \"objects\",\n              \"id\": \"{{object_id_with_bucket}}\"\n            }\n          }\n        }\n      }\n    ]\n  }"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "----------------------Update the item--------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET The new created File Item",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"var item_id = jsonData.data[0].id;",
+									"pm.environment.set(\"item_id\", item_id);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/folders/:folder/contents",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"folders",
+								":folder",
+								"contents"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "folder",
+									"value": "{{folder_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Item",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH Update Item ???",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/vnd.api+json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonapi\": {\n    \"version\": \"1.0\"\n  },\n  \"data\": {\n    \"type\": \"items\",\n    \"id\": \"{{item_id}}\",\n    \"attributes\": {\n      \"displayName\": \"newname.jpg\",\n      \"hidden\": true\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Item relationship reference ???",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"// var responseBody = JSON.parse(responseBody);",
+									"// pm.environment.set(\"version_id\", encodeURIComponent(responseBody.data.id));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{  \n   \"jsonapi\":{  \n      \"version\":\"1.0\"\n   },\n   \"data\":{  \n      \"type\":\"versions\",\n      \"attributes\":{  \n         \"name\":\"basic.jpg\",\n         \"extension\":{  \n            \"type\":\"versions:autodesk.bim360:File\",\n            \"version\":\"1.0\"\n         }\n      },\n      \"relationships\":{  \n         \"item\":{  \n            \"data\":{  \n               \"type\":\"items\",\n               \"id\":\"{{item_id}}\"\n            }\n         },\n         \"storage\":{  \n            \"data\":{  \n               \"type\":\"objects\",\n               \"id\":\"{{object_id_with_bucket}}\"\n            }\n         }\n      }\n   }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/relationships/refs",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"relationships",
+								"refs"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "---------------------Create a new version---------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create storage",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"var object_id = jsonData.data.id;",
+									"var params = object_id.split('/');",
+									"",
+									"pm.environment.set(\"object_id\", params[params.length - 1]);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n      \"jsonapi\": { \"version\": \"1.0\" },\n      \"data\": {\n        \"type\": \"objects\",\n        \"attributes\": {\n          \"name\": \"test2.jpg\"\n        },\n        \"relationships\": {\n          \"target\": {\n            \"data\": { \"type\": \"folders\", \"id\": \"{{folder_id}}\" }\n          }\n        }\n      }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/storage",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"storage"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Upload file",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"var object_id_with_bucket = jsonData.objectId;",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/octet-stream"
+							}
+						],
+						"body": {
+							"mode": "file",
+							"file": {
+								"src": "/Users/zhongwu/Desktop/Screen Shot 2021-02-02 at 8.25.31 PM.png"
+							}
+						},
+						"url": {
+							"raw": "{{base_domain}}/oss/v2/buckets/:bucket/objects/:object",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"oss",
+								"v2",
+								"buckets",
+								":bucket",
+								"objects",
+								":object"
+							],
+							"variable": [
+								{
+									"key": "bucket",
+									"value": "{{bim360_bucket}}"
+								},
+								{
+									"key": "object",
+									"value": "{{object_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create new version",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"var responseBody = JSON.parse(responseBody);",
+									"pm.environment.set(\"version_id\", encodeURIComponent(responseBody.data.id));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{  \n   \"jsonapi\":{  \n      \"version\":\"1.0\"\n   },\n   \"data\":{  \n      \"type\":\"versions\",\n      \"attributes\":{  \n         \"name\":\"basic.jpg\",\n         \"extension\":{  \n            \"type\":\"versions:autodesk.bim360:File\",\n            \"version\":\"1.0\"\n         }\n      },\n      \"relationships\":{  \n         \"item\":{  \n            \"data\":{  \n               \"type\":\"items\",\n               \"id\":\"{{item_id}}\"\n            }\n         },\n         \"storage\":{  \n            \"data\":{  \n               \"type\":\"objects\",\n               \"id\":\"{{object_id_with_bucket}}\"\n            }\n         }\n      }\n   }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				},
+				{
+					"name": "-------------------Update the version-----------------------------",
+					"request": {
+						"method": "VIEW",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/items/:item/parent",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"items",
+								":item",
+								"parent"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "item",
+									"value": "{{item_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Version",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions/:version",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions",
+								":version"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "version",
+									"value": "{{version_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH Update version ???",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/vnd.api+json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonapi\": {\n    \"version\": \"1.0\"\n  },\n  \"data\": {\n    \"type\": \"versions\",\n    \"id\": \"{{version_id}}\",\n    \"attributes\": {\n\n      \"hidden\": true\n    }\n  }\n}\n\n"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions/:version",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions",
+								":version"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "version",
+									"value": "{{version_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Version Reference ???",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"// var responseBody = JSON.parse(responseBody);",
+									"// pm.environment.set(\"version_id\", encodeURIComponent(responseBody.data.id));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{  \n   \"jsonapi\":{  \n      \"version\":\"1.0\"\n   },\n   \"data\":{  \n      \"type\":\"versions\",\n      \"attributes\":{  \n         \"name\":\"basic.jpg\",\n         \"extension\":{  \n            \"type\":\"versions:autodesk.bim360:File\",\n            \"version\":\"1.0\"\n         }\n      },\n      \"relationships\":{  \n         \"item\":{  \n            \"data\":{  \n               \"type\":\"items\",\n               \"id\":\"{{item_id}}\"\n            }\n         },\n         \"storage\":{  \n            \"data\":{  \n               \"type\":\"objects\",\n               \"id\":\"{{object_id_with_bucket}}\"\n            }\n         }\n      }\n   }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/versions/:version/relationships/refs",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"versions",
+								":version",
+								"relationships",
+								"refs"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "version",
+									"value": ""
+								}
+							]
+						},
+						"description": "Lists all buckets."
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Data Management Commands",
+			"item": [
+				{
+					"name": "POST Check Permisssion",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n         \"jsonapi\":{\n            \"version\":\"1.0\"\n         },\n         \"data\":{\n            \"type\":\"commands\",\n            \"attributes\":{\n               \"extension\":{\n                  \"type\":\"commands:autodesk.core:CheckPermission\",\n                  \"version\":\"1.0.0\",\n                  \"data\":{\n                     \"requiredActions\":[\n                        \"download\",\n                        \"view\"\n                     ]\n                  }\n               }\n            },\n            \"relationships\":{\n               \"resources\":{\n                  \"data\":[\n                     {\n                        \"type\":\"folders\",\n                        \"id\":\"{{folder_id}}\"\n                     }\n                  ]\n               }\n            }\n         }\n      }"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/commands",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"commands"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST List References",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"jsonapi\": {\n        \"version\": \"1.0\"\n    },\n    \"data\": {\n        \"type\": \"commands\",\n        \"attributes\": {\n            \"extension\": {\n                \"type\": \"commands:autodesk.core:ListRefs\",\n                \"version\": \"1.0.0\"\n            }\n        },\n        \"relationships\": {\n            \"resources\": {\n                \"data\": [\n                    {\n                        \"type\": \"versions\",\n                        \"id\": \"{{version_id}}\"\n                    }\n                ]\n            }\n        }\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/commands",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"commands"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST List Items",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonapi\": {\n    \"version\": \"1.0\"\n  },\n  \"data\": {\n    \"type\": \"commands\",\n    \"attributes\": {\n      \"extension\": {\n        \"type\": \"commands:autodesk.core:ListItems\",\n        \"version\": \"1.0.0\"\n      }\n    },\n    \"relationships\": {\n      \"resources\": {\n        \"data\": [\n          {\n            \"type\": \"items\",\n            \"id\": \"{{item_id}}\"\n          }\n        ]\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/commands",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"commands"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Folder",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n      \"data\": {\n            \"type\": \"commands\",\n            \"attributes\": {\n              \"extension\": {\n                    \"type\": \"commands:autodesk.core:CreateFolder\",\n                    \"version\": \"1.0.0\"\n              }\n            },\n            \"relationships\": {\n              \"resources\": {\n                    \"data\": [\n                      {\n                            \"type\": \"folders\",\n                            \"id\": \"1\"\n                      }\n                    ]\n              }\n            }\n      },\n      \"included\": [\n            {\n              \"type\": \"folders\",\n              \"id\": \"1\",\n              \"attributes\": {\n                    \"name\": \"My Folder\",\n                    \"extension\": {\n                      \"type\": \"folders:autodesk.bim360:Folder\",\n                      \"version\": \"1.0\"\n                      }\n                    },\n              \"relationships\": {\n                    \"parent\": {\n                      \"data\": {\n                            \"type\": \"folders\",\n                            \"id\": \"{{folder_id}}\"\n                      }\n                    }\n              }\n            }\n      ]\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/commands",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"commands"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Publish Model",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"jsonapi\": {\n      \"version\": \"1.0\"\n    },\n    \"data\": {\n      \"type\": \"commands\",\n      \"attributes\": {\n        \"extension\": {\n          \"type\": \"commands:autodesk.bim360:C4RModelPublish\",\n          \"version\": \"1.0.0\"\n      }\n    },\n    \"relationships\": {\n      \"resources\": {\n        \"data\": [ \n            { \"type\": \"items\", \n        \"id\": \"{{item_id}}\" \n        } ]\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/commands",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"commands"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Get Publish Mode Job",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": " {\n    \"jsonapi\": {\n      \"version\": \"1.0\"\n    },\n    \"data\": {\n      \"type\": \"commands\",\n      \"attributes\": {\n        \"extension\": {\n          \"type\": \"commands:autodesk.bim360:C4RModelGetPublishJob\",\n          \"version\": \"1.0.0\"\n      }\n    },\n    \"relationships\": {\n      \"resources\": {\n        \"data\": [ { \"type\": \"items\", \n        \"id\": \"{{item_id}}\" } ]\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_domain}}/data/v1/projects/:project/commands",
+							"host": [
+								"{{base_domain}}"
+							],
+							"path": [
+								"data",
+								"v1",
+								"projects",
+								":project",
+								"commands"
+							],
+							"variable": [
+								{
+									"key": "project",
+									"value": "{{project_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "oauth2",
+		"oauth2": [
+			{
+				"key": "scope",
+				"value": "data:read bucket:read bucket:create data:write bucket:delete account:write account:read data:create",
+				"type": "string"
+			},
+			{
+				"key": "clientSecret",
+				"value": "{{client_secret}}",
+				"type": "string"
+			},
+			{
+				"key": "clientId",
+				"value": "{{client_id}}",
+				"type": "string"
+			},
+			{
+				"key": "tokenName",
+				"value": "3 Legged Token",
+				"type": "string"
+			},
+			{
+				"key": "challengeAlgorithm",
+				"value": "S256",
+				"type": "string"
+			},
+			{
+				"key": "redirect_uri",
+				"value": "https://www.getpostman.com/oauth2/callback",
+				"type": "string"
+			},
+			{
+				"key": "grant_type",
+				"value": "authorization_code",
+				"type": "string"
+			},
+			{
+				"key": "authUrl",
+				"value": "https://developer.api.autodesk.com/authentication/v1/authorize",
+				"type": "string"
+			},
+			{
+				"key": "addTokenTo",
+				"value": "header",
+				"type": "string"
+			},
+			{
+				"key": "client_authentication",
+				"value": "body",
+				"type": "string"
+			},
+			{
+				"key": "accessTokenUrl",
+				"value": "https://developer.api.autodesk.com/authentication/v1/gettoken",
+				"type": "string"
+			},
+			{
+				"key": "tokenType",
+				"value": "Bearer",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
