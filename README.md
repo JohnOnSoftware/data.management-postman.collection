@@ -14,6 +14,17 @@ This collection contains 3 folders, it covers all the endpoints related to Data 
 2. Workflow tp Create|Update Folder|Item|Version.
 3. Data Management Commands endpoint.
 
+# Thumbnail
+- Workflow to Access Hub|Project|Item|Version.
+![thumbnail](img/access.png)
+
+- Workflow tp Create|Update Folder|Item|Version.
+![thumbnail](img/create.png)
+
+- Data Management Commands endpoint.
+![thumbnail](img/command.png)
+
+
 
 ## License
 This sample is licensed under the terms of the [MIT License](http://opensource.org/licenses/MIT). Please see the [LICENSE](LICENSE) file for full details.
